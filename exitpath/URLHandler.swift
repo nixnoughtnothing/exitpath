@@ -5,37 +5,62 @@
 //  Created by Nicholas Maccharoli on 6/22/15.
 //  Copyright (c) 2015 Nicholas Maccharoli. All rights reserved.
 //
+import foundation
 
-import Foundation
+typealias URLSelector = (URLComponents) -> Bool
+typealias URLAction = (URLComponents) -> Void
 
-typealias LinkHandler = (String, Dictionary<String, String>) -> Void
-
-class LinkDispatch {
-
-    private var actionForPath : Dictionary<String, LinkHandler>
-    private var baseUrl : String
-
-    init (baseUrl : String) {
-        self.baseUrl = baseUrl
-        actionForPath = [String:LinkHandler]()
-    }
-
-    func urlClicked(url : String){
-
-        let getParameters = extractGetParamenters(url)
-        let urlPathComponents = extractUrlPath(url, self.baseUrl)
-        let fullPath = urlPathComponents.count > 1 ? urlPathComponents.reduce("", combine: { $0 + $1 + "/"} ) : urlPathComponents[0]
-        if let matchedClosure : LinkHandler = self.actionForPath[fullPath] {
-            matchedClosure(url, getParameters)
+public struct URLComponents {
+    
+    var fullURL : String!
+    var baseURL : String!
+    
+    var pathComponents : [String] {
+        get {
+            return extractUrlPath(self.fullURL, self.baseURL!)
         }
     }
-
-    func handleUrlWithPath( urlPath : String, handler : LinkHandler){
-        actionForPath[urlPath] = handler
+    
+    var getParams : [String : String] {
+        get {
+            return extractGetParamenters(self.fullURL)
+        }
     }
+    
+}
 
-    func handleUrlWithPaths( urlPaths : [String], handler : LinkHandler){
-        urlPaths.map { self.actionForPath[$0] = handler }
+class URLRouting {
+    
+    var validatorForID : [String : URLSelector]?
+    var actionForID : Dictionary<String, URLAction>?
+    
+    func actionIDForURL(#URL : String?, baseURL : String) -> String? {
+        for (actionID, actionIDSelectorBlock) in self.validatorForID! {
+            var urlComponents = URLComponents(fullURL: URL, baseURL: baseURL)
+            if actionIDSelectorBlock(urlComponents) {
+                return actionID
+            }
+        }
+        return nil;
     }
-
+    
+    func actionForActionID(actionID : String) -> URLAction? {
+        if let selectedAction = self.actionForID![actionID]{
+            return selectedAction
+        }
+        else {
+            return nil
+        }
+    }
+    
+    func performActionForURL(#URL : String, baseURL : String){
+        var actionID : String = self.actionIDForURL(URL: URL, baseURL: baseURL)!
+        if let blockToCall = self.actionForActionID(actionID){
+            blockToCall(URLComponents(fullURL: URL, baseURL: baseURL))
+        }
+        else {
+            
+        }
+        
+    }
 }
